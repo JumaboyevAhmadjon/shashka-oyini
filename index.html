@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Shashka — Quyoncha 🐇 va Kuchukcha 🐕</title>
+<style>
+  :root{
+    --board-size:min(86vmin,720px);
+    --dark:#5b3a21;
+    --light:#d9b89a;
+    --bg:#f4ecdf;
+    --ui:#3b2416;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(180deg,#efe6d6,#dbc09a);
+    font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    color:#2f1e11;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+    user-select:none;
+    padding:20px;
+  }
+
+  /* Container */
+  .app {
+    width:100%;
+    max-width:1100px;
+    display:flex;
+    gap:18px;
+    align-items:flex-start;
+    justify-content:center;
+  }
+
+  /* Left: board */
+  .left{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:12px;
+    flex:1;
+  }
+
+  .board-wrap{
+    background:linear-gradient(180deg,#a3764f,#c59a6b);
+    padding:18px;
+    border-radius:14px;
+    border:6px solid #6b4a2b;
+    box-shadow:0 10px 30px rgba(0,0,0,0.18);
+  }
+
+  .board{
+    width:var(--board-size);
+    height:var(--board-size);
+    display:grid;
+    grid-template-columns:repeat(8,1fr);
+    grid-template-rows:repeat(8,1fr);
+    border-radius:8px;
+    overflow:hidden;
+  }
+/* === Koordinatalar uchun qo‘shimcha === */
+.board-container {
+  position: relative;
+  display: inline-block;
+}
+
+.coord {
+  position: absolute;
+  color: #000; /* qora rang */
+  font-weight: 600;
+  font-size: 14px;
+  opacity: 0.9;
+  pointer-events: none; /* bosilmasin */
+}
+
+/* Raqamlar (chap va o‘ng) */
+.coord.num.left {
+  /* bottom: 20px;   */
+  left: -30px;
+}
+
+.coord.num.right {
+  right: -250px; /* o‘ng tomonni to‘g‘riladik */
+}
+
+/* Harflar (tepa va past) */
+.coord.let.top {
+  top: -22px;
+}
+
+.coord.let.bottom {
+  bottom: -22px;
+}
+
+
+  .cell{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:32px;
+    position:relative;
+    transition: background 0.12s;
+  }
+  .dark{background:var(--dark);}
+  .light{background:var(--light);}
+
+  .cell .piece{
+    width:86%;
+    height:86%;
+    /*border-radius:50%;*/
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:1.6rem;
+    cursor:pointer;
+    transition: transform .12s ease, box-shadow .12s;
+    user-select:none;
+  }
+  /* .piece.white{
+    background:#fff;
+    color:#222;
+  }
+  .piece.black{
+    background:#222;
+    color:#fff;
+  } */
+  .piece.king{
+    box-shadow:0 0 0 4px rgba(255,215,0,0.12), 0 6px 18px rgba(0,0,0,0.25);
+  }
+  .piece.selected{ transform:scale(1.06); box-shadow:0 8px 20px rgba(0,0,0,.25); }
+
+  /* highlights */
+  .cell.highlight{ outline:4px solid rgba(255,235,150,0.16); }
+  .cell.capture-target{ outline:6px solid rgba(255,120,80,0.22); }
+
+  /* king badge (small crown) */
+  .king-badge{ position:absolute; top:6px; right:6px; font-size:14px; }
+
+  /* wiggle (quyon ear twitch) */
+  @keyframes twitchEars { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-8deg)} 50%{transform:rotate(8deg)} 75%{transform:rotate(-5deg)} }
+  .wiggle{ animation:twitchEars .5s ease-in-out; transform-origin:center; display:inline-block; }
+
+  /* bark bubble */
+  .bark{
+    position:absolute;
+    top:-24px;
+    left:8px;
+    padding:4px 8px;
+    border-radius:8px;
+    background:rgba(0,0,0,0.6);
+    color:#fff;
+    font-size:13px;
+    animation:fadeOut .8s ease forwards;
+  }
+  @keyframes fadeOut { 0%{opacity:1;} 100%{opacity:0; transform:translateY(-12px);} }
+
+  /* Right: UI */
+  .right{
+    width:320px;
+    max-width:36%;
+    min-width:240px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  .card{
+    background:#fff9f5;
+    padding:12px;
+    border-radius:10px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.06);
+    border:1px solid rgba(0,0,0,0.04);
+  }
+  h1{ margin:0; font-size:20px; color:var(--ui) }
+  .controls{ display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+  button{
+    background:var(--ui);
+    color:#fff;
+    border:none;
+    padding:8px 10px;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:700;
+  }
+  /* .small{ font-size:13px; color:#6a4f3a; } */
+
+  /* modal */
+  #winnerModal{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); z-index:80; }
+  #winnerModal.active{ display:flex; }
+  .modal{ background:#fff6e3; padding:18px; border-radius:12px; border:3px solid #5c3a10; min-width:220px; text-align:center; }
+
+  /* responsive */
+  @media (max-width:980px){
+    .app{ flex-direction:column; align-items:center; gap:12px; }
+    .right{ width:95%; max-width:600px; }
+    .board-wrap{ padding:12px; }
+    :root{ --board-size:86vmin; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="left">
+    <div class="board-wrap card">
+        <div class="board-container">
+          <div id="board" class="board" aria-label="Shashka taxtasi"></div>
+        </div>
+      </div>
+      
+
+    <div class="controls small">
+      <button id="restartBtn">🆕 Yangi o‘yin</button>
+      <button id="undoBtn">↩️ Ortga olish</button>
+      <button id="flipBtn">🔁 Taxtani aylantirish</button>
+    </div>
+
+    <div class="small" id="turnIndicator" style="margin-top:6px; font-weight:700">Navbat: Oq (🐇)</div>
+  </div>
+
+  <div class="right">
+    <div class="card">
+      <h1>O‘yinga oid ma'lumot</h1>
+      <div class="small" style="margin-top:8px">
+        8×8 klassik shashka - Oq (quyoncha) boshlaydi. Majburiy urish va zanjirli urishlar mavjud. Damka — qirol (👑).
+      </div>
+      <div style="margin-top:10px" class="controls">
+        <button id="helpBtn">ℹ️ Qoidalar</button>
+        <button id="saveBtn">💾 Saqlash</button>
+        <button id="loadBtn">📂 Yuklash</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:700">Holat</div>
+      <div id="historyList" class="small" style="margin-top:8px; max-height:160px; overflow:auto"></div>
+    </div>
+
+    <!-- <div class="card small">
+      <div style="font-weight:700; margin-bottom:6px">Eslatma</div>
+      <div>O‘yin telefonda va kompyuterda bir xil ishlaydi. Agar rasm yuklanmasa, emoji orqali ko‘rinadi.</div>
+    </div> -->
+  </div>
+</div>
+
+<!-- rules modal -->
+<div id="rulesModal" style="display:none; position:fixed; inset:0; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); z-index:90;">
+  <div style="background:#fff6e3; padding:16px; border-radius:10px; border:3px solid #5c3a10; max-width:520px; margin:16px">
+    <h3>Oʻyin qoidalari</h3>
+    <ul style="text-align:left">
+      <li>Oddiy dona diagonaldan bir katakka yuradi.</li>
+      <li>Agar urish imkoniyati bo'lsa — urish majburiy.</li>
+      <li>Bitta yurishda bir nechta urish (multi-capture) bajarilishi mumkin va davom ettirish shart.</li>
+      <li>Damka (king) bo'lsa, har yo'nalishda istalgan masofaga yurishi va urishi mumkin (shayt holatiga qarab).</li>
+      <li>Damka: dona raqibning oxirgi qatorda bo'lsa (oq uchun 8, qora uchun 1).</li>
+    </ul>
+    <div style="display:flex; gap:8px; justify-content:center; margin-top:8px">
+      <button id="closeRules">Yopish</button>
+    </div>
+  </div>
+</div>
+
+<!-- winner modal -->
+<div id="winnerModal"><div class="modal"><h2 id="winnerText"></h2><div style="margin-top:12px"><button id="closeWinner">OK</button></div></div></div>
+
+<script>
+/* ========= Integrated Game Script =========
+   - Based mainly on the more advanced logic (long-range kings)
+   - Added undo/history, forced capture enforcement, UI controls
+   - Works offline using emojis (no external images required)
+*/
+
+const boardEl = document.getElementById('board');
+const restartBtn = document.getElementById('restartBtn');
+const undoBtn = document.getElementById('undoBtn');
+const flipBtn = document.getElementById('flipBtn');
+const turnIndicator = document.getElementById('turnIndicator');
+const rulesBtn = document.getElementById('helpBtn');
+const rulesModal = document.getElementById('rulesModal');
+const closeRules = document.getElementById('closeRules');
+const winnerModal = document.getElementById('winnerModal');
+const winnerText = document.getElementById('winnerText');
+const closeWinner = document.getElementById('closeWinner');
+const saveBtn = document.getElementById('saveBtn');
+const loadBtn = document.getElementById('loadBtn');
+const historyList = document.getElementById('historyList');
+
+const cols = ['a','b','c','d','e','f','g','h'];
+const SIZE = 8;
+
+/* Game state */
+let state = {
+  pieces: {}, // map square-> {color:'white'|'black', king:boolean}
+  turn: 'white',
+  selected: null,
+  mustContinue:false,
+  continueFrom:null,
+  flipped:false
+};
+let history = []; // array of snapshots for undo (JSON strings)
+
+/* Helpers */
+function squareId(c,r){ return cols[c] + r; }
+function parseSquare(id){ return [cols.indexOf(id[0]), parseInt(id[1],10)]; }
+function isDarkByCoords(c,r){ return ((c + r) % 2) === 1; }
+function cloneState(){ return JSON.stringify(state); }
+function pushHistory(){ history.push(cloneState()); if(history.length>200) history.shift(); renderHistory(); }
+function restoreFromSnapshot(snap){ state = JSON.parse(snap); render(); renderHistory(); }
+
+function initPieces(){
+  state.pieces = {};
+  // as specified: white on bottom a1,c1,e1,g1,b2,d2,f2,h2,a3,c3,e3,g3
+  const white = ['a1','c1','e1','g1','b2','d2','f2','h2','a3','c3','e3','g3'];
+  const black = ['h8','f8','d8','b8','a7','c7','e7','g7','b6','d6','f6','h6'];
+  white.forEach(s => state.pieces[s] = { color:'white', king:false });
+  black.forEach(s => state.pieces[s] = { color:'black', king:false });
+  state.turn = 'white';
+  state.selected = null;
+  state.mustContinue = false;
+  state.continueFrom = null;
+  state.flipped = false;
+  history = [];
+  pushHistory();
+}
+
+/* Rendering */
+function render(){
+  boardEl.innerHTML = '';
+  // rows top to bottom: 8..1, if flipped reverse
+  let rows = [8,7,6,5,4,3,2,1];
+  if(state.flipped) rows = [...rows].reverse();
+  for(let rIdx=0;rIdx<8;rIdx++){
+    const r = rows[rIdx];
+    for(let c=0;c<8;c++){
+      const cell = document.createElement('div');
+      cell.className = 'cell ' + (isDarkByCoords(c,r) ? 'dark' : 'light');
+      const id = squareId(c,r);
+      cell.dataset.square = id;
+      // piece?
+      const p = state.pieces[id];
+      if(p){
+        const el = document.createElement('div');
+        el.className = 'piece ' + (p.color==='white'?'white':'black') + (p.king?' king':'');
+        const img = document.createElement('img');
+        img.src = p.color === 'white' ? './img/rabbit.png' : './img/dog.png';
+        img.style.width = '40px';
+        img.style.height = '40px';
+        img.style.objectFit = 'contain';
+        img.draggable = false; // tasodifan tortilmasin
+        el.appendChild(img);
+        // attach click
+        el.onclick = (e)=>{ e.stopPropagation(); onCellClick(id); };
+        cell.appendChild(el);
+        if(p.king){
+          const kb = document.createElement('div');
+          kb.className = 'king-badge'; kb.textContent='👑';
+          cell.appendChild(kb);
+        }
+      }
+      cell.onclick = ()=> onCellClick(id);
+      boardEl.appendChild(cell);
+    }
+  }
+  highlightMoves();
+  turnIndicator.textContent = `Navbat: ${state.turn==='white' ? 'Oq (🐇)' : 'Qora (🐕)'}`;
+}
+
+/* Movement rules and move generation (supports long-range kings & captures) */
+function at(sq){ return state.pieces[sq] || null; }
+function anyCaptureForPlayer(player){
+  return Object.keys(state.pieces).some(sq => {
+    const p = state.pieces[sq]; if(!p || p.color!==player) return false;
+    return getMoves(sq).some(m=>m.captures && m.captures.length);
+  });
+}
+
+function getMoves(sq){
+  const p = at(sq); if(!p) return [];
+  const [c,r] = parseSquare(sq);
+  const dirs = [[1,1],[-1,1],[1,-1],[-1,-1]];
+  const moves = [];
+
+  if(p.king){
+    // long-range capture scanning
+    for(const d of dirs){
+      let cc = c + d[0], rr = r + d[1];
+      let seenEnemy = null;
+      while(cc>=0 && cc<8 && rr>=1 && rr<=8){
+        const s = squareId(cc,rr);
+        const occ = at(s);
+        if(!seenEnemy){
+          if(occ && occ.color!==p.color){
+            seenEnemy = s;
+          } else if(occ){
+            break; // blocked by ally
+          }
+        } else {
+          if(!occ){
+            moves.push({ to: s, captures: [seenEnemy] });
+          } else break;
+        }
+        cc += d[0]; rr += d[1];
+      }
+    }
+    if(moves.length) return moves;
+    // if no capture, add simple long-range moves
+    for(const d of dirs){
+      let cc = c + d[0], rr = r + d[1];
+      while(cc>=0 && cc<8 && rr>=1 && rr<=8){
+        const s = squareId(cc,rr);
+        if(!at(s)) moves.push({ to: s, captures: [] });
+        else break;
+        cc += d[0]; rr += d[1];
+      }
+    }
+    return moves;
+  } else {
+    // regular piece
+    // check captures first
+    for(const d of dirs){
+      const c1 = c + d[0], r1 = r + d[1], c2 = c + 2*d[0], r2 = r + 2*d[1];
+      if(c2>=0 && c2<8 && r2>=1 && r2<=8){
+        const mid = squareId(c1,r1), land = squareId(c2,r2);
+        if(at(mid) && at(mid).color !== p.color && !at(land)){
+          moves.push({ to: land, captures: [mid] });
+        }
+      }
+    }
+    if(moves.length) return moves;
+    // no captures: simple moves (forward for non-king)
+    const forward = p.color === 'white' ? 1 : -1; // note: in user's second code white increases row
+    // But original positions had white at rows 1-3 (bottom). To keep familiar UX we use same: white forward +1 (to bigger row)
+    // However earlier we used opposite; align with user's placed coords: white a1.. -> white moves up (increasing row).
+    const simpleDirs = [[-1,forward],[1,forward]];
+    for(const d of simpleDirs){
+      const nc = c + d[0], nr = r + d[1];
+      if(nc>=0 && nc<8 && nr>=1 && nr<=8){
+        const s = squareId(nc,nr);
+        if(!at(s)) moves.push({ to: s, captures: [] });
+      }
+    }
+    return moves;
+  }
+}
+
+/* Selection, UI and move attempt */
+function onCellClick(sq){
+  // If mustContinue: only same piece can be used to continue
+  if(state.mustContinue && state.continueFrom && state.continueFrom !== sq) {
+    // if clicked other tile do nothing
+    const p = at(sq);
+    if(!(p && p.color===state.turn && sq===state.selected)) return;
+  }
+
+  const p = at(sq);
+  const forced = anyCaptureForPlayer(state.turn);
+
+  // clicking on own piece: select if allowed
+  if(p && p.color === state.turn){
+    const moves = getMoves(sq);
+    // if forced capture exists globally, only select pieces that can capture
+    if(forced && !moves.some(m=>m.captures && m.captures.length)) return;
+    // if mustContinue active, only allow selecting same piece
+    if(state.mustContinue && state.continueFrom && sq !== state.continueFrom) return;
+    state.selected = sq;
+    render();
+    return;
+  }
+
+  // clicking empty cell: attempt move if a piece selected
+  if(!state.selected) return;
+  // check if move is allowed (enforce forced captures)
+  const moves = getMoves(state.selected);
+  const chosen = moves.find(m => m.to === sq);
+  if(!chosen) return;
+
+  // if forced exists and chosen is non-capture, disallow
+  if(forced && !(chosen.captures && chosen.captures.length)) return;
+
+  // perform move with animations
+  performMove(state.selected, chosen);
+}
+
+/* perform move, with pushHistory and multi-capture handling */
+function performMove(from, mv){
+  pushHistory(); // save pre-move state
+  const p = at(from);
+  // visual effects
+  const fromCell = [...boardEl.children].find(x=>x.dataset.square === from);
+  const pieceEl = fromCell?.querySelector('.piece');
+  if(p.color === 'white'){
+    if(pieceEl){
+      pieceEl.classList.add('wiggle');
+      setTimeout(()=> pieceEl.classList.remove('wiggle'), 520);
+    }
+  } else {
+    if(fromCell){
+      const b = document.createElement('div');
+      b.className = 'bark'; b.textContent = 'Vov-vov!';
+      fromCell.appendChild(b);
+      setTimeout(()=> b.remove(), 700);
+    }
+  }
+
+  // remove from & captured
+  delete state.pieces[from];
+  if(mv.captures && mv.captures.length){
+    mv.captures.forEach(cap => { delete state.pieces[cap]; });
+  }
+  // place at destination
+  // check promotion: white -> row 8, black -> row 1
+  const [c,dRow] = parseSquare(mv.to);
+  let newKing = p.king;
+  if(!newKing){
+    if(p.color === 'white' && dRow === 8) newKing = true;
+    if(p.color === 'black' && dRow === 1) newKing = true;
+  }
+  state.pieces[mv.to] = { color: p.color, king: newKing };
+
+    // after move, check for further captures for the moved piece
+    const further = getMoves(mv.to).filter(x=>x.captures && x.captures.length);
+  if (mv.captures && mv.captures.length && further.length) {
+    // donani joyida qoldiramiz va keyingi zarbani kutamiz
+    state.mustContinue = true;
+    state.continueFrom = mv.to;
+    state.selected = mv.to;
+    render();
+
+    // 🔁 avtomatik davomiy urish imkoniyatlarini ko‘rsatish
+    setTimeout(() => {
+      const nextCaptures = getMoves(mv.to).filter(x => x.captures && x.captures.length);
+      if (nextCaptures.length === 1) {
+        // agar faqat bitta yo‘l bo‘lsa, avtomatik davom ettir
+        performMove(mv.to, nextCaptures[0]);
+      }
+    }, 300);
+    return;
+  }
+
+
+  // else end turn
+  state.mustContinue = false;
+  state.continueFrom = null;
+  state.selected = null;
+  state.turn = state.turn === 'white' ? 'black' : 'white';
+  render();
+  checkEnd();
+}
+
+/* Highlight moves for selected piece */
+function highlightMoves(){
+  // clear highlights
+  document.querySelectorAll('.cell').forEach(el=> el.classList.remove('highlight','capture-target'));
+  if(!state.selected) return;
+  const moves = getMoves(state.selected);
+  moves.forEach(m=>{
+    const cell = [...boardEl.children].find(x=> x.dataset.square === m.to);
+    if(cell){
+      if(m.captures && m.captures.length) cell.classList.add('capture-target');
+      else cell.classList.add('highlight');
+    }
+  });
+  // highlight selected piece
+  const selectedCell = [...boardEl.children].find(x=> x.dataset.square === state.selected);
+  if(selectedCell){
+    const pe = selectedCell.querySelector('.piece');
+    if(pe) pe.classList.add('selected');
+  }
+}
+
+/* Undo */
+function undo(){
+  if(history.length <= 1) return;
+  history.pop(); // current state
+  const snap = history[history.length - 1];
+  restoreFromSnapshot(snap);
+}
+
+/* Save/Load (localStorage) */
+function saveGame(){
+  localStorage.setItem('shashka-save', JSON.stringify(state));
+  alert('O‘yin saqlandi.');
+}
+function loadGame(){
+  const s = localStorage.getItem('shashka-save');
+  if(!s) return alert('Saqlangan o‘yin topilmadi.');
+  state = JSON.parse(s);
+  pushHistory();
+  render();
+  alert('O‘yin yuklandi.');
+}
+
+/* Flip board */
+function flipBoard(){
+  state.flipped = !state.flipped;
+  render();
+}
+
+/* Check end (no pieces or no moves) */
+function anyMovesAvailable(player){
+  return Object.keys(state.pieces).some(sq=>{
+    const p = state.pieces[sq];
+    if(!p || p.color !== player) return false;
+    const mv = getMoves(sq);
+    return mv.length > 0;
+  });
+}
+function checkEnd(){
+  const whites = Object.values(state.pieces).filter(x=>x.color==='white').length;
+  const blacks = Object.values(state.pieces).filter(x=>x.color==='black').length;
+  if(whites === 0 || !anyMovesAvailable('white')){
+    showWinner('Kuchukchalar (qora) gʻalaba!');
+    return;
+  }
+  if(blacks === 0 || !anyMovesAvailable('black')){
+    showWinner('Quyonchalar (oq) gʻalaba!');
+    return;
+  }
+}
+
+/* Winner modal */
+function showWinner(text){
+  winnerText.textContent = text;
+  winnerModal.classList.add('active');
+}
+
+/* UI: history list */
+function renderHistory(){
+  historyList.innerHTML = '';
+  history.slice().reverse().forEach((snap, idx)=>{
+    const i = history.length - idx;
+    const d = document.createElement('div');
+    d.textContent = `#${i}`;
+    d.style.padding = '4px 0';
+    historyList.appendChild(d);
+  });
+}
+
+/* Event listeners */
+restartBtn.onclick = ()=>{ if(confirm("Yangi o'yin boshlansinmi?")){ initPieces(); render(); pushHistory(); } };
+undoBtn.onclick = ()=> undo();
+flipBtn.onclick = ()=> { flipBoard(); };
+rulesBtn.onclick = ()=> rulesModal.style.display = 'flex';
+closeRules.onclick = ()=> rulesModal.style.display = 'none';
+closeWinner.onclick = ()=> { winnerModal.classList.remove('active'); };
+saveBtn.onclick = ()=> saveGame();
+loadBtn.onclick = ()=> loadGame();
+
+/* Init */
+initPieces();
+render();
+
+/* Accessibility: keyboard undo (Ctrl+Z) */
+window.addEventListener('keydown', (e)=> {
+  if((e.ctrlKey || e.metaKey) && e.key === 'z'){ undo(); }
+});
+/* === Shashka taxtasi koordinatalari (a-h, 1-8) === */
+const boardContainer = document.querySelector('.board-container');
+if (boardContainer) {
+  // Chap va o‘ng tomondagi raqamlar
+  for (let i = 0; i < 8; i++) {
+    const numLeft = document.createElement('div');
+    numLeft.className = 'coord num left';
+    numLeft.style.top = `calc(${(100 / 8) * i}% + 6px)`;
+    numLeft.textContent = 8 - i;
+    boardContainer.appendChild(numLeft);
+
+    const numRight = document.createElement('div');
+    numRight.className = 'coord num right';
+    numRight.style.top = `calc(${(100 / 8) * i}% + 6px)`;
+    numRight.textContent = 8 - i;
+    boardContainer.appendChild(numRight);
+  }
+
+  // Yuqori va pastdagi harflar
+  const cols = ['a','b','c','d','e','f','g','h'];
+  for (let i = 0; i < 8; i++) {
+    const letBottom = document.createElement('div');
+    letBottom.className = 'coord let bottom';
+    letBottom.style.left = `calc(${(100 / 8) * i}% + 8px)`;
+    letBottom.textContent = cols[i];
+    boardContainer.appendChild(letBottom);
+
+    const letTop = document.createElement('div');
+    letTop.className = 'coord let top';
+    letTop.style.left = `calc(${(100 / 8) * i}% + 8px)`;
+    letTop.textContent = cols[i];
+    boardContainer.appendChild(letTop);
+  }
+}
+</script>
+</body>
+</html>
