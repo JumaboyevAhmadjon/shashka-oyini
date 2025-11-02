@@ -69,6 +69,11 @@
   position: relative;
   display: inline-block;
 }
+.board .cell {
+  min-width: calc(var(--board-size) / 8);
+  min-height: calc(var(--board-size) / 8);
+  flex-shrink: 0;
+}
 
 .coord {
   position: absolute;
@@ -196,11 +201,31 @@
 
   /* responsive */
   @media (max-width:980px){
-    .app{ flex-direction:column; align-items:center; gap:12px; }
-    .right{ width:95%; max-width:600px; }
-    .board-wrap{ padding:12px; }
-    :root{ --board-size:86vmin; }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
+  .app {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .left {
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+  }
+  .board-wrap {
+    padding: 10px;
+    margin: 0 auto;
+  }
+  :root {
+    --board-size: 88vmin;
+  }
+}
+
 </style>
 </head>
 <body>
